@@ -1,0 +1,390 @@
+#define _CRT_SECURE_NO_WARNINGS
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdbool.h>
+#include <locale.h>
+
+#define DEBUG
+
+//typedef float type;
+
+#ifdef DEBUG
+#define DUMP(this_)                                                                       \
+    {                                                                                     \
+       printf("FAILED  LINE %ld\nFUNCTION FAILED %s\n\n", __LINE__, __FUNCTION__);        \
+       DumpFunction(this_);                                                               \
+    }                                                                                     \
+
+#else                                                                                                                                                        
+#define DUMP(this_);      
+#endif
+
+int MAXDATA = 10;
+const int poison = -666;
+const int canary = -555;
+const int number_of_codes = 11;
+int g_pointer_check = 1;
+
+struct stack_t
+{
+	int canary1[3] = {};
+        type ax = 0;
+        type bx = 0;
+        type cx = 0;
+        type dx = 0;
+	int error_codes[number_of_codes] = {};
+	int size = 0;
+	type control_sum = {};
+	type data[1] = {};
+};
+
+struct stack_t* StackConstruct();
+
+struct stack_t* StackPush(struct stack_t*, type);
+
+bool StackPop(struct stack_t*, type*);
+
+int StackDestruct(struct stack_t*);
+
+int StackOK(struct stack_t*);
+
+long ControlSum(struct stack_t*);
+
+struct stack_t* MoreMemory(struct stack_t*);
+
+bool DumpFunction(struct stack_t*);
+
+bool PointerCheck(struct stack_t*);
+
+void TestHash();
+
+enum ErrorCodes
+{
+	Sum = 55,
+	Overflow = 9,
+	Underflow = 8,
+	BackCanary = 11,
+	FrontCanary = 21
+};
+
+int error_codes[number_of_codes] = {};
+
+//Коды ошибок вынести в глобальный массив чтобы отязать их от структуры и добавить ошибку nullptr, проверить вызовы защиты.
+
+struct stack_t* StackConstruct()
+{
+	struct stack_t* stk1 = (struct stack_t*) calloc(1, sizeof(struct stack_t) + 12 * sizeof(type));
+
+	//struct stack_t* stk1 = nullptr;
+
+	if (!stk1) return nullptr;
+
+	for (int i = 0; i < MAXDATA; i++)
+	{
+		stk1->data[i] = poison;
+	}
+
+	for (int i = 0; i < 9; i++)
+	{
+		stk1->error_codes[i] = 0;
+	}
+
+	stk1->size = 0;
+
+	for (int i = 0; i < 3; i++)
+	{
+		stk1->canary1[i] = canary;
+		stk1->data[MAXDATA + i] = canary;
+	}
+
+	stk1->control_sum = ControlSum(stk1);
+
+	if (StackOK(stk1) != 0)
+		DUMP(stk1)
+
+		return stk1;
+}
+
+struct stack_t* StackPush(struct stack_t* this_, type elem)
+{
+	if (PointerCheck(this_) == 0)
+		return nullptr;
+
+	if (StackOK(this_) != 0)
+		DUMP(this_);
+
+	if (this_->size == MAXDATA)
+		this_ = MoreMemory(this_);
+
+
+
+	this_->data[this_->size] = elem;
+	this_->size++;
+
+	this_->control_sum = ControlSum(this_);
+
+	if (StackOK(this_) != 0)
+		DUMP(this_);
+
+	return this_;
+}
+
+bool StackPop(struct stack_t* this_, type* elem)
+{
+
+	if (PointerCheck(this_) == 0)
+		return false;
+
+	if (StackOK(this_) != 0)
+		DUMP(this_);
+
+	if (this_->size == 0)
+	{
+		this_->size--;
+		StackOK(this_);
+		DUMP(this_);
+	}
+
+	this_->size--;
+	*elem = this_->data[this_->size];
+	this_->data[this_->size] = poison;
+	this_->control_sum = ControlSum(this_);
+
+	if (StackOK(this_) != 0)
+		DUMP(this_);
+
+	return true;
+
+}
+
+int StackDestruct(struct stack_t* this_)
+{
+	if (PointerCheck(this_) == 0)
+		return false;
+
+	if (StackOK(this_) != 0)
+		DUMP(this_);
+
+	while (this_->size > 0)
+	{
+		this_->size--;
+		this_->data[this_->size] = poison;
+	}
+
+	free(this_);
+
+	return 0;
+}
+
+bool IsEmpty(struct stack_t* this_)
+{
+	return (this_->size == 0);
+}
+
+int StackOK(struct stack_t* this_)
+{
+	int marker = 0;
+
+	if (this_->control_sum != ControlSum(this_))
+	{
+		this_->error_codes[0] = Sum;
+		marker = 1;
+	}
+
+	if (this_->size > MAXDATA)
+	{
+		this_->error_codes[1] = Overflow;
+		marker = 1;
+	}
+
+	if (this_->size < 0)
+	{
+		this_->error_codes[2] = Underflow;
+		marker = 1;
+	}
+
+	for (int i = 2; i >= 0; i--)
+	{
+		if (this_->canary1[i] != canary)
+		{
+			this_->error_codes[5 - i] = BackCanary + i;
+			marker = 1;
+		}
+	}
+
+	for (int i = 2; i >= 0; i--)
+	{
+		if (this_->data[MAXDATA + i] != canary)
+		{
+			this_->error_codes[8 - i] = FrontCanary + i;
+			marker = 1;
+		}
+	}
+
+	return marker;
+}
+
+long ControlSum(struct stack_t* this_)
+{
+	type sum = 0;
+
+	for (int i = 0; i < 9; i++)
+	{
+		sum += (this_->error_codes[i]) * (i + 1);
+	}
+
+	sum += this_->size;
+
+	for (int i = 0; i < this_->size; i++)
+	{
+		//sum += (this_->data[i]) * ((i + 1) + this_->data[i] ^ 145322);
+		sum += (this_->data[i]) * (i + 1);
+	}
+
+	return sum;
+}
+
+struct stack_t* MoreMemory(struct stack_t* this_)
+{
+	struct stack_t* p = (struct stack_t*)realloc(this_, sizeof(struct stack_t) + sizeof(type) * MAXDATA * 2 + 3);
+
+	if (PointerCheck(this_)) this_ = p;
+
+	else  return nullptr;
+
+	MAXDATA *= 2;
+
+	for (int i = this_->size; i < MAXDATA; i++)
+	{
+		this_->data[i] = poison;
+	}
+
+	for (int i = 0; i < 3; i++)
+	{
+		this_->data[MAXDATA + i] = canary;
+	}
+
+	return this_;
+}
+
+bool DumpFunction(struct stack_t* this_)
+{
+	int canary_marker = 0;
+	char name[] = "Stack1";
+
+	if (g_pointer_check == 0)
+		printf("Pointer is nullptr!!!\n\n");
+
+	printf("Name of Stack: ");
+	puts(name);
+	printf("\nCanary Status:   ");
+
+	if (this_->error_codes[9] == 66)
+	{
+		printf("Pointer is nullptr!!!\n\n");
+		exit(1);
+	}
+
+	for (int i = 3; i < 9; i++)
+	{
+		if (this_->error_codes[i] != 0)
+		{
+			printf("FAILED\n");
+			canary_marker = 1;
+			break;
+		}
+	}
+
+	if (canary_marker == 0)
+	{
+		printf("OK\n");
+	}
+
+	printf("\nFRONT :\n");
+
+	for (int i = 0; i < 3; i++)
+	{
+		printf("[%d] %d\n", i + 1, this_->canary1[i]);
+	}
+
+	printf("\nBACK :\n");
+
+	for (int i = 0; i < 3; i++)
+	{
+		printf("[%d] %d\n", i + 1, this_->data[MAXDATA + i]);
+	}
+
+	printf("\nControl Sum status:   ");
+
+	if (this_->error_codes[0] == 55)
+	{
+		printf("FAILED\n");
+	}
+	else
+	{
+		printf("OK\n");
+	}
+
+	printf("Expected: %lu\nCurrent value: %lu\n\n", this_->control_sum, ControlSum(this_));
+	printf("Counter Status:   ");
+
+	if (this_->error_codes[1] == 9)
+	{
+		printf("OVERFLOW FAILED\n");
+	}
+	else if (this_->error_codes[2] == 8)
+	{
+		printf("UNDERFLOW FAILED\n");
+	}
+	else
+	{
+		printf("OK\n");
+	}
+
+	printf("Do you want to see all the %d elements of the stack?\nYes - 1 ; No - 2\n", MAXDATA);
+	int answer = 0;
+	scanf("%d", &answer);
+
+	if (answer == 1)
+	{
+		for (int i = 0; i < MAXDATA; i++)
+			printf("[%d]: %d\n", i, this_->data[i]);
+	}
+	else printf("\n");
+
+	return true;
+	//exit(1);
+}
+
+void TestHash() {
+	struct stack_t* stk1 = StackConstruct();
+
+	stk1 = StackPush(stk1, 5);
+	stk1 = StackPush(stk1, 3);
+
+	printf("hash1: %d\n", stk1->control_sum);
+
+
+	//StackPop(stk1);
+	//StackPop(stk1);
+
+	stk1 = StackPush(stk1, 7);
+	stk1 = StackPush(stk1, 2);
+
+	printf("hash2: %d\n", stk1->control_sum);
+}
+
+bool PointerCheck(struct stack_t* this_)
+{
+	if (this_ == nullptr)
+	{
+		g_pointer_check = 0;
+
+		return false;
+	}
+
+	return true;
+}
+
