@@ -1,4 +1,4 @@
-﻿#define _CRT_SECURE_NO_WARNINGS
+#define _CRT_SECURE_NO_WARNINGS
 
 #include <stdio.h>
 #include <string.h>
@@ -26,7 +26,8 @@ enum Commands
 	CMD_PUSH_cx = 9,
 	CMD_POP_ax = 10,
 	CMD_POP_bx = 11,
-	CMD_POP_cx = 12
+	CMD_POP_cx = 12,
+	CMD_JMP = 13
 };
 
 int main()
@@ -63,6 +64,17 @@ int* Assembler(FILE* input)
 			fscanf(input, "%d", &elem);
 			fprintf(output, "%d\n", elem);
 			commands[num_of_command] = elem;
+		}
+
+		if (strcmp(str, "jmp") == 0)
+		{
+			fprintf(output, "%d ", CMD_JMP);
+			commands[num_of_command] = CMD_JMP;
+			num_of_command++;
+			type pos = 0;
+			fscanf(input, "%d", &pos);
+			fprintf(output, "%d\n", pos);
+			commands[num_of_command] = pos;
 		}
 
 		if (strcmp(str, "add") == 0)
@@ -227,6 +239,12 @@ FILE* CPU(int* commands, struct stack_t* stk)
 			num_of_command++;
 			elem = commands[num_of_command];
 			StackPush(stk, elem);
+		}
+
+		if (command == CMD_JMP)
+		{
+			num_of_command++;
+			num_of_command = commands[num_of_command] - 1;
 		}
 
 		if (command == CMD_ADD)
