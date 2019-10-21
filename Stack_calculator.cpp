@@ -47,7 +47,7 @@ int* Assembler(FILE* input)
 
 	int end_of_file = 0;
 	int num_of_command = 0;
-	int* commands = (int*) calloc(20, sizeof(int));
+	int* commands = (int*) calloc(21, sizeof(int));
 
 	while (!end_of_file)
 	{
