@@ -37,8 +37,7 @@ int main()
 	stack_t* stk1 = StackConstruct();
 
 	CPU(Assembler(input), stk1);
-
-
+	
 	return 0;
 }
 
@@ -49,8 +48,9 @@ int* Assembler(FILE* input)
 	int end_of_file = 0;
 	int num_of_command = 0;
 	int* commands = (int*) calloc(20, sizeof(int));
+	int labels[10] = {};
 
-	while (!end_of_file)
+	while (end_of_file != 2)
 	{
 		char str[10] = "";
 		fscanf(input, "%s", str);
@@ -71,10 +71,16 @@ int* Assembler(FILE* input)
 			fprintf(output, "%d ", CMD_JMP);
 			commands[num_of_command] = CMD_JMP;
 			num_of_command++;
-			type pos = 0;
-			fscanf(input, "%d", &pos);
-			fprintf(output, "%d\n", pos);
-			commands[num_of_command] = pos;
+			int label = 0;
+			fscanf(input, "%d", &label);
+			commands[num_of_command] = labels[label];
+			fprintf(output, "%d\n", label);
+		}
+
+		if (str[0] == ':')
+		{
+			labels[str[1] - '0'] = num_of_command;
+			num_of_command--;
 		}
 
 		if (strcmp(str, "add") == 0)
@@ -145,15 +151,19 @@ int* Assembler(FILE* input)
 
 		if (strcmp(str, "end") == 0)
 		{
-			end_of_file = 1;
+			end_of_file++;
 			fprintf(output, "%d\n", CMD_END);
 			commands[num_of_command] = CMD_END;
+			if (end_of_file == 1)
+			{
+				fseek(output, 0, SEEK_SET);
+				fseek(input, 0, SEEK_SET);
+				num_of_command = -1;
+			}
 		}
 
 		num_of_command++;
 	}
-
-	fseek(output, 0, SEEK_SET);
 
 	return commands;
 }
