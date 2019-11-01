@@ -10,7 +10,7 @@ typedef int type;
 
 int* Assembler(FILE*);
 FILE* Disassembler(FILE*);
-FILE* CPU(int*, struct stack_t*);
+FILE* CPU(struct stack_t*);
 
 const int MAX_NUMBER_OF_COMMANDS = 100;
 const int MAX_NUMBER_OF_LABELS = 50;
@@ -54,7 +54,9 @@ int main()
 
 	stack_t* stk1 = StackConstruct();
 
-	CPU(Assembler(input), stk1);
+	Assembler(input);
+
+	CPU(stk1);
 
 	return 0;
 }
@@ -81,34 +83,23 @@ int* Assembler(FILE* input)
 
 		if (strcmp(str, "push") == 0)
 		{
-			fprintf(output, "%d ", CMD_PUSH);
 			commands[num_of_command] = CMD_PUSH;
 			num_of_command++;
 			int elem = 0;
 			fscanf(input, "%d", &elem);
-			fprintf(output, "%d\n", elem);
 			commands[num_of_command] = elem;
 		}
 
 		if (str[0] == 'j')
 		{
 			if (strcmp(str, "jmp") == 0)
-			{
-				fprintf(output, "%d ", CMD_JMP);
 				commands[num_of_command] = CMD_JMP;
-			}
 
 			if (strcmp(str, "ja") == 0)
-			{
-				fprintf(output, "%d ", CMD_JA);
 				commands[num_of_command] = CMD_JA;
-			}
 
 			if (strcmp(str, "jb") == 0)
-			{
-				fprintf(output, "%d ", CMD_JB);
 				commands[num_of_command] = CMD_JB;
-			}
 
 			num_of_command++;
 			fscanf(input, "%s", label);
@@ -138,124 +129,66 @@ int* Assembler(FILE* input)
 		}
 
 		if (strcmp(str, "add") == 0)
-		{
-			fprintf(output, "%d\n", CMD_ADD);
 			commands[num_of_command] = CMD_ADD;
-		}
+		
 
 		if (strcmp(str, "sub") == 0)
-		{
-			fprintf(output, "%d\n", CMD_SUB);
 			commands[num_of_command] = CMD_SUB;
-		}
 
 		if (strcmp(str, "mul") == 0)
-		{
-			fprintf(output, "%d\n", CMD_MUL);
 			commands[num_of_command] = CMD_MUL;
-		}
 
 		if (strcmp(str, "div") == 0)
-		{
-			fprintf(output, "%d\n", CMD_DIV);
 			commands[num_of_command] = CMD_DIV;
-		}
 
 		if (strcmp(str, "pop") == 0)
-		{
-			fprintf(output, "%d\n", CMD_POP);
 			commands[num_of_command] = CMD_POP;
-		}
 
 		if (strcmp(str, "push_ax") == 0)
-		{
-			fprintf(output, "%d\n", CMD_PUSH_ax);
 			commands[num_of_command] = CMD_PUSH_ax;
-		}
 
 		if (strcmp(str, "push_bx") == 0)
-		{
-			fprintf(output, "%d\n", CMD_PUSH_bx);
 			commands[num_of_command] = CMD_PUSH_bx;
-		}
 
 		if (strcmp(str, "push_cx") == 0)
-		{
-			fprintf(output, "%d\n", CMD_PUSH_cx);
 			commands[num_of_command] = CMD_PUSH_cx;
-		}
 
 		if (strcmp(str, "pop_ax") == 0)
-		{
-			fprintf(output, "%d\n", CMD_POP_ax);
 			commands[num_of_command] = CMD_POP_ax;
-		}
 
 		if (strcmp(str, "pop_bx") == 0)
-		{
-			fprintf(output, "%d\n", CMD_POP_bx);
 			commands[num_of_command] = CMD_POP_bx;
-		}
 
 		if (strcmp(str, "pop_cx") == 0)
-		{
-			fprintf(output, "%d\n", CMD_POP_cx);
 			commands[num_of_command] = CMD_POP_cx;
-		}
 
 		if (strcmp(str, "in_ax") == 0)
-		{
-			fprintf(output, "%d\n", CMD_IN_ax);
 			commands[num_of_command] = CMD_IN_ax;
-		}
 
 		if (strcmp(str, "in_bx") == 0)
-		{
-			fprintf(output, "%d\n", CMD_IN_bx);
 			commands[num_of_command] = CMD_IN_bx;
-		}
 
 		if (strcmp(str, "in_cx") == 0)
-		{
-			fprintf(output, "%d\n", CMD_IN_cx);
 			commands[num_of_command] = CMD_IN_cx;
-		}
 
 		if (strcmp(str, "out_ax") == 0)
-		{
-			fprintf(output, "%d\n", CMD_OUT_ax);
 			commands[num_of_command] = CMD_OUT_ax;
-		}
 
 		if (strcmp(str, "out_bx") == 0)
-		{
-			fprintf(output, "%d\n", CMD_OUT_bx);
 			commands[num_of_command] = CMD_OUT_bx;
-		}
 
 		if (strcmp(str, "out_cx") == 0)
-		{
-			fprintf(output, "%d\n", CMD_OUT_cx);
 			commands[num_of_command] = CMD_OUT_cx;
-		}
 
 		if (strcmp(str, "out") == 0)
-		{
-			fprintf(output, "%d\n", CMD_OUT);
 			commands[num_of_command] = CMD_OUT;
-		}
 
 		if (strcmp(str, "fout") == 0)
-		{
-			fprintf(output, "%d\n", CMD_FOUT);
 			commands[num_of_command] = CMD_FOUT;
-		}
-
 
 		if (strcmp(str, "end") == 0)
 		{
 			end_of_file++;
-			fprintf(output, "%d\n", CMD_END);
 			commands[num_of_command] = CMD_END;
 
 			if (end_of_file == 1)
@@ -269,6 +202,14 @@ int* Assembler(FILE* input)
 		num_of_command++;
 	}
 
+	fprintf(output, "%d ", num_of_command);
+
+	for (int i = 0; i < num_of_command; i++)
+	{
+		fprintf(output, "%d ", commands[i]);
+	}
+
+	fseek(output, 0, SEEK_SET);
 	return commands;
 }
 
@@ -343,9 +284,21 @@ FILE* Disassembler(FILE* input)
 	return output;
 }
 
-FILE* CPU(int* commands, struct stack_t* stk)
+FILE* CPU(struct stack_t* stk)
 {
-	FILE* output = fopen("answer.txt", "w");
+	FILE* input = fopen("asm_output.txt", "r");
+	FILE* output = fopen("cpu_output.txt", "w");
+	
+	int count_of_commands = 0;
+
+	fscanf(input, "%d", &count_of_commands);
+
+	int* commands = (int*)calloc(count_of_commands, sizeof(int));
+
+	for (int i = 0; i < count_of_commands; i++)
+	{
+		fscanf(input, "%d", commands+i);
+	}
 
 	int end_of_file = 0;
 	int num_of_command = 0;
@@ -516,9 +469,6 @@ FILE* CPU(int* commands, struct stack_t* stk)
 
 		num_of_command++;
 	}
-
-	//StackPop(stk, &answer);
-	//fprintf(output, "%d", answer);
 
 	return output;
 }
