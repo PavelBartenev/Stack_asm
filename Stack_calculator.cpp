@@ -64,7 +64,7 @@ int main()
 
 int* Assembler(FILE* input)
 {
-	FILE* output = fopen("asm_output.txt", "a+");
+	FILE* output = fopen("asm_output.txt", "w");
 
 	int end_of_file = 0;
 	int num_of_command = 0;
