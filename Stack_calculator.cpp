@@ -6,28 +6,46 @@
 
 typedef int type;
 
-#include <D:\VS projects\Stack_calculator\stack_typedef.h.txt>
+#include <D:\VS projects\Stack_asm\stack_typedef.h.txt>
 
 int* Assembler(FILE*);
 FILE* Disassembler(FILE*);
 FILE* CPU(int*, struct stack_t*);
 
+const int MAX_NUMBER_OF_COMMANDS = 100;
+const int MAX_NUMBER_OF_LABELS = 50;
+const int MAX_LENGHT_OF_COMMAND = 10;
+
 enum Commands
 {
-	CMD_END = 0,
-	CMD_PUSH = 1,
-	CMD_POP = 2,
-	CMD_ADD = 3,
-	CMD_SUB = 4,
-	CMD_MUL = 5,
-	CMD_DIV = 6,
-	CMD_PUSH_ax = 7,
-	CMD_PUSH_bx = 8,
-	CMD_PUSH_cx = 9,
-	CMD_POP_ax = 10,
-	CMD_POP_bx = 11,
-	CMD_POP_cx = 12,
-	CMD_JMP = 13
+	CMD_END,
+	CMD_PUSH,
+	CMD_POP,
+	CMD_ADD,
+	CMD_SUB,
+	CMD_MUL,
+	CMD_DIV,
+	CMD_PUSH_ax,
+	CMD_PUSH_bx,
+	CMD_PUSH_cx,
+	CMD_PUSH_j1x,
+	CMD_PUSH_j2x,
+	CMD_POP_ax,
+	CMD_POP_bx,
+	CMD_POP_cx,
+	CMD_POP_j1x,
+	CMD_POP_j2x,
+	CMD_JMP,
+	CMD_JA,
+	CMD_JB,
+	CMD_IN_ax,
+	CMD_IN_bx,
+	CMD_IN_cx,
+	CMD_OUT_ax,
+	CMD_OUT_bx,
+	CMD_OUT_cx,
+	CMD_OUT,
+	CMD_FOUT,
 };
 
 int main()
@@ -37,9 +55,10 @@ int main()
 	stack_t* stk1 = StackConstruct();
 
 	CPU(Assembler(input), stk1);
-	
+
 	return 0;
 }
+
 
 int* Assembler(FILE* input)
 {
@@ -47,12 +66,17 @@ int* Assembler(FILE* input)
 
 	int end_of_file = 0;
 	int num_of_command = 0;
-	int* commands = (int*) calloc(20, sizeof(int));
-	int labels[10] = {};
+	int* commands = (int*)calloc(MAX_NUMBER_OF_COMMANDS, sizeof(int));
+	char labels[MAX_LENGHT_OF_COMMAND*MAX_NUMBER_OF_LABELS] = {};
+	int labels_pointers[2*MAX_NUMBER_OF_LABELS] = {};
+	int labels_pos = 0;
+	int labels_point_pos = 0;
 
 	while (end_of_file != 2)
 	{
-		char str[10] = "";
+		char str[MAX_LENGHT_OF_COMMAND] = {};
+		char label[MAX_LENGHT_OF_COMMAND] = {};
+
 		fscanf(input, "%s", str);
 
 		if (strcmp(str, "push") == 0)
@@ -60,26 +84,56 @@ int* Assembler(FILE* input)
 			fprintf(output, "%d ", CMD_PUSH);
 			commands[num_of_command] = CMD_PUSH;
 			num_of_command++;
-			type elem = 0;
+			int elem = 0;
 			fscanf(input, "%d", &elem);
 			fprintf(output, "%d\n", elem);
 			commands[num_of_command] = elem;
 		}
 
-		if (strcmp(str, "jmp") == 0)
+		if (str[0] == 'j')
 		{
-			fprintf(output, "%d ", CMD_JMP);
-			commands[num_of_command] = CMD_JMP;
+			if (strcmp(str, "jmp") == 0)
+			{
+				fprintf(output, "%d ", CMD_JMP);
+				commands[num_of_command] = CMD_JMP;
+			}
+
+			if (strcmp(str, "ja") == 0)
+			{
+				fprintf(output, "%d ", CMD_JA);
+				commands[num_of_command] = CMD_JA;
+			}
+
+			if (strcmp(str, "jb") == 0)
+			{
+				fprintf(output, "%d ", CMD_JB);
+				commands[num_of_command] = CMD_JB;
+			}
+
 			num_of_command++;
-			int label = 0;
-			fscanf(input, "%d", &label);
-			commands[num_of_command] = labels[label];
-			fprintf(output, "%d\n", label);
+			fscanf(input, "%s", label);
+
+			char* pointer = strstr(labels, label);
+
+			for (int i = 0; i < 20; i += 2)
+			{
+				if (labels_pointers[i] == (int)pointer)
+				{
+					commands[num_of_command] = labels_pointers[i + 1];
+					break;
+				}
+			}
 		}
 
 		if (str[0] == ':')
 		{
-			labels[str[1] - '0'] = num_of_command;
+			fscanf(input, "%s", label);
+			strncat(labels, label, MAX_LENGHT_OF_COMMAND);
+			labels_pointers[labels_point_pos] = ((int)labels) + labels_pos;
+			labels_point_pos++;
+			labels_pointers[labels_point_pos] = num_of_command;
+			labels_point_pos++;
+			labels_pos += strlen(label);
 			num_of_command--;
 		}
 
@@ -149,11 +203,61 @@ int* Assembler(FILE* input)
 			commands[num_of_command] = CMD_POP_cx;
 		}
 
+		if (strcmp(str, "in_ax") == 0)
+		{
+			fprintf(output, "%d\n", CMD_IN_ax);
+			commands[num_of_command] = CMD_IN_ax;
+		}
+
+		if (strcmp(str, "in_bx") == 0)
+		{
+			fprintf(output, "%d\n", CMD_IN_bx);
+			commands[num_of_command] = CMD_IN_bx;
+		}
+
+		if (strcmp(str, "in_cx") == 0)
+		{
+			fprintf(output, "%d\n", CMD_IN_cx);
+			commands[num_of_command] = CMD_IN_cx;
+		}
+
+		if (strcmp(str, "out_ax") == 0)
+		{
+			fprintf(output, "%d\n", CMD_OUT_ax);
+			commands[num_of_command] = CMD_OUT_ax;
+		}
+
+		if (strcmp(str, "out_bx") == 0)
+		{
+			fprintf(output, "%d\n", CMD_OUT_bx);
+			commands[num_of_command] = CMD_OUT_bx;
+		}
+
+		if (strcmp(str, "out_cx") == 0)
+		{
+			fprintf(output, "%d\n", CMD_OUT_cx);
+			commands[num_of_command] = CMD_OUT_cx;
+		}
+
+		if (strcmp(str, "out") == 0)
+		{
+			fprintf(output, "%d\n", CMD_OUT);
+			commands[num_of_command] = CMD_OUT;
+		}
+
+		if (strcmp(str, "fout") == 0)
+		{
+			fprintf(output, "%d\n", CMD_FOUT);
+			commands[num_of_command] = CMD_FOUT;
+		}
+
+
 		if (strcmp(str, "end") == 0)
 		{
 			end_of_file++;
 			fprintf(output, "%d\n", CMD_END);
 			commands[num_of_command] = CMD_END;
+
 			if (end_of_file == 1)
 			{
 				fseek(output, 0, SEEK_SET);
@@ -220,6 +324,15 @@ FILE* Disassembler(FILE* input)
 		if (command == CMD_POP_cx)
 			fprintf(output, "%s\n", "pop_cx");
 
+		if (command == CMD_IN_ax)
+			fprintf(output, "%s\n", "in_ax");
+
+		if (command == CMD_IN_bx)
+			fprintf(output, "%s\n", "in_bx");
+
+		if (command == CMD_IN_cx)
+			fprintf(output, "%s\n", "in_cx");
+
 		if (command == CMD_END)
 		{
 			end_of_file = 1;
@@ -251,11 +364,37 @@ FILE* CPU(int* commands, struct stack_t* stk)
 			StackPush(stk, elem);
 		}
 
+		if (command == CMD_POP)
+		{
+			type elem = 0;
+			StackPop(stk, &elem);
+		}
+
 		if (command == CMD_JMP)
 		{
 			num_of_command++;
 			num_of_command = commands[num_of_command] - 1;
 		}
+
+		if ((command == CMD_JA) || (command == CMD_JB))
+		{
+			type elem1 = 0;
+			type elem2 = 0;
+			StackPop(stk, &elem2);
+			StackPop(stk, &elem1);
+
+			if (((elem1 > elem2) && (command == CMD_JA)) || ((elem1 < elem2) && (command == CMD_JB)))
+			{
+				num_of_command++;
+				num_of_command = commands[num_of_command] - 1;
+			}
+			else
+				num_of_command++;
+
+			StackPush(stk, elem1);
+			StackPush(stk, elem2);
+		}
+
 
 		if (command == CMD_ADD)
 		{
@@ -289,7 +428,7 @@ FILE* CPU(int* commands, struct stack_t* stk)
 			StackPop(stk, &elem);
 			type result = elem;
 			StackPop(stk, &elem);
-			result = result/elem;
+			result = result / elem;
 			StackPush(stk, result);
 		}
 
@@ -315,33 +454,73 @@ FILE* CPU(int* commands, struct stack_t* stk)
 		{
 			elem = stk->ax;
 			StackPush(stk, elem);
-			stk->ax = 0;
 		}
 
 		if (command == CMD_PUSH_bx)
 		{
 			elem = stk->bx;
 			StackPush(stk, elem);
-			stk->bx = 0;
 		}
 
 		if (command == CMD_PUSH_cx)
 		{
 			elem = stk->cx;
 			StackPush(stk, elem);
-			stk->cx = 0;
+		}
+
+		if (command == CMD_IN_ax)
+		{
+			printf("Enter a value for the register ax: ");
+			scanf("%d", &(stk->ax));
+		}
+
+		if (command == CMD_IN_bx)
+		{
+			printf("Enter a value for the register bx: ");
+			scanf("%d", &(stk->bx));
+		}
+
+		if (command == CMD_IN_cx)
+		{
+			printf("Enter a value for the register cx: ");
+			scanf("%d", &(stk->cx));
+		}
+
+		if (command == CMD_OUT_ax)
+			printf("%d\n", stk->ax);
+
+		if (command == CMD_OUT_bx)
+			printf("%d\n", stk->bx);
+
+		if (command == CMD_OUT_cx)
+			printf("%d\n", stk->cx);
+
+		if (command == CMD_OUT)
+		{
+			type elem = 0;
+			StackPop(stk, &elem);
+			printf("%d\n", elem);
+			StackPush(stk, elem);
+		}
+
+		if (command == CMD_FOUT)
+		{
+			type elem = 0;
+			StackPop(stk, &elem);
+			fprintf(output, "%d\n", elem);
+			StackPush(stk, elem);
 		}
 
 		if (command == CMD_END)
-		{
 			end_of_file = 1;
-		}
 
 		num_of_command++;
 	}
 
-	StackPop(stk, &answer);
-	fprintf(output, "%d", answer);
+	//StackPop(stk, &answer);
+	//fprintf(output, "%d", answer);
 
 	return output;
 }
+
+
